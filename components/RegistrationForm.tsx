@@ -146,7 +146,7 @@ export default function RegistrationForm() {
             Registration Complete!
           </h2>
           
-          {registrationNumber && (
+          {/* {registrationNumber && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -159,7 +159,7 @@ export default function RegistrationForm() {
               </p>
               <p className="text-xs text-gray-500 mt-2">Please save this number for your records</p>
             </motion.div>
-          )}
+          )} */}
           
           <p className="text-gray-300 mb-6">
             Thank you for registering. We look forward to seeing you at the event!
