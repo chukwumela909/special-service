@@ -638,7 +638,7 @@ export default function RegistrationForm() {
         </motion.p>
 
         {/* Admin Link */}
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}
@@ -651,7 +651,7 @@ export default function RegistrationForm() {
             <BarChart3 className="w-4 h-4" />
             View Registration Statistics
           </Link>
-        </motion.div>
+        </motion.div> */}
       </motion.div>
     </div>
   )
