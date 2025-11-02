@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
+import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { CheckCircle, Loader2 } from "lucide-react"
+import { CheckCircle, Loader2, BarChart3 } from "lucide-react"
 
 // Form validation schema
 const formSchema = z.object({
@@ -50,6 +51,8 @@ type FormData = z.infer<typeof formSchema>
 export default function RegistrationForm() {
   const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [registrationNumber, setRegistrationNumber] = useState<string>("")
+  const [errorMessage, setErrorMessage] = useState<string>("")
 
   const {
     register,
@@ -68,11 +71,32 @@ export default function RegistrationForm() {
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    console.log(data)
-    setIsSubmitting(false)
-    setSubmitted(true)
+    setErrorMessage("")
+
+    try {
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Registration failed')
+      }
+
+      // Success
+      setRegistrationNumber(result.data.registrationNumber)
+      setSubmitted(true)
+    } catch (error: any) {
+      console.error('Registration error:', error)
+      setErrorMessage(error.message || 'An error occurred. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (submitted) {
@@ -121,11 +145,30 @@ export default function RegistrationForm() {
           <h2 className="text-3xl font-bold mb-4 text-white">
             Registration Complete!
           </h2>
+          
+          {registrationNumber && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-600"
+            >
+              <p className="text-sm text-gray-400 mb-1">Your Registration Number</p>
+              <p className="text-2xl font-bold text-green-400 font-mono tracking-wider">
+                {registrationNumber}
+              </p>
+              <p className="text-xs text-gray-500 mt-2">Please save this number for your records</p>
+            </motion.div>
+          )}
+          
           <p className="text-gray-300 mb-6">
             Thank you for registering. We look forward to seeing you at the event!
           </p>
           <Button
-            onClick={() => setSubmitted(false)}
+            onClick={() => {
+              setSubmitted(false)
+              setRegistrationNumber("")
+            }}
             className="w-full bg-slate-700 hover:bg-slate-600 text-white"
           >
             Submit Another Registration
@@ -170,10 +213,10 @@ export default function RegistrationForm() {
               className="flex justify-center mb-6"
             >
               <Image
-                src="/TFN-new.png"
+                src="/specialsw.png"
                 alt="Logo"
-                width={100}
-                height={100}
+                width={200}
+                height={150}
                 className="object-contain"
               />
             </motion.div>
@@ -181,9 +224,9 @@ export default function RegistrationForm() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="text-3xl md:text-4xl font-bold text-white text-center mb-2"
+              className="text-3xl md:text-4xl font-bold text-white text-center mb-5"
             >
-              Event Registration
+              REGISTER FOR A SPECIAL SERVICE WITH DR DAYSMAN OYAKHILOME AND PASTOR DAVID HERNANDEZ
             </motion.h1>
             <motion.p
               initial={{ opacity: 0 }}
@@ -191,12 +234,26 @@ export default function RegistrationForm() {
               transition={{ delay: 0.4 }}
               className="text-gray-300 text-center"
             >
-              Join us for an extraordinary experience
+              CREATE AN ACCOUNT ON TFN.WATCH and fill this form with the name and email you used to create the account. This allows us to make you a part of the TFN network that enjoy access to cash giveaways, raffle draws, game shows, and charitable causes we invest in
             </motion.p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="p-8 md:p-12 space-y-6">
+            {/* Error Message */}
+            <AnimatePresence>
+              {errorMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 text-red-400"
+                >
+                  <p className="text-sm font-medium">{errorMessage}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Name */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -579,6 +636,22 @@ export default function RegistrationForm() {
         >
           We look forward to having you join us for this special service
         </motion.p>
+
+        {/* Admin Link */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2 }}
+          className="text-center mt-4 relative z-10"
+        >
+          <Link
+            href="/stats"
+            className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            <BarChart3 className="w-4 h-4" />
+            View Registration Statistics
+          </Link>
+        </motion.div>
       </motion.div>
     </div>
   )
