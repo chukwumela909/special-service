@@ -189,7 +189,7 @@ export default function StatsPage() {
       reg.cefZone || "",
       reg.inviteSomeone,
       reg.inviteeName || "",
-      reg.inviteeCountryCode && reg.inviteePhone ? formatPhoneNumber(reg.inviteeCountryCode, reg.inviteePhone) : "",
+      reg.inviteePhone ? formatPhoneNumber(reg.inviteeCountryCode, reg.inviteePhone) : "",
       new Date(reg.createdAt).toLocaleString(),
     ])
 
@@ -256,7 +256,7 @@ export default function StatsPage() {
           reg.expectations.replace(/"/g, '""'), // Escape quotes in expectations
           reg.inviteSomeone,
           reg.inviteeName || "",
-          reg.inviteeCountryCode && reg.inviteePhone ? formatPhoneNumber(reg.inviteeCountryCode, reg.inviteePhone) : "",
+          reg.inviteePhone ? formatPhoneNumber(reg.inviteeCountryCode, reg.inviteePhone) : "",
           new Date(reg.createdAt).toLocaleString(),
         ])
 
@@ -609,9 +609,12 @@ export default function StatsPage() {
                           <div className="text-sm text-green-400">
                             ✓ {reg.inviteeName}
                           </div>
-                          <div className="text-xs text-gray-400">
-                            {reg.inviteeCountryCode && reg.inviteePhone ? formatPhoneNumber(reg.inviteeCountryCode, reg.inviteePhone) : ""}
-                          </div>
+                          {reg.inviteePhone && (
+                            <div className="text-xs text-gray-400 flex items-center gap-1">
+                              <Phone className="w-3 h-3" />
+                              {formatPhoneNumber(reg.inviteeCountryCode, reg.inviteePhone)}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-sm text-gray-500">No</span>
