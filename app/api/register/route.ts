@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
       name,
       age,
       email,
+      countryCode,
       phone,
       lga,
       city,
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
       inviteSomeone,
     } = body;
 
-    if (!name || !age || !email || !phone || !lga || !city || !state || !country || !expectations || !inviteSomeone) {
+    if (!name || !age || !email || !countryCode || !phone || !lga || !city || !state || !country || !expectations || !inviteSomeone) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
@@ -33,9 +34,9 @@ export async function POST(request: NextRequest) {
 
     // If inviting someone, validate invitee details
     if (inviteSomeone === 'yes') {
-      if (!body.inviteeName || !body.inviteePhone) {
+      if (!body.inviteeName || !body.inviteeCountryCode || !body.inviteePhone) {
         return NextResponse.json(
-          { success: false, error: 'Invitee name and phone are required when inviting someone' },
+          { success: false, error: 'Invitee name, country code and phone are required when inviting someone' },
           { status: 400 }
         );
       }
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
       name,
       age,
       email,
+      countryCode,
       phone,
       lga,
       city,
@@ -69,6 +71,7 @@ export async function POST(request: NextRequest) {
       expectations,
       inviteSomeone,
       inviteeName: inviteSomeone === 'yes' ? body.inviteeName : undefined,
+      inviteeCountryCode: inviteSomeone === 'yes' ? body.inviteeCountryCode : undefined,
       inviteePhone: inviteSomeone === 'yes' ? body.inviteePhone : undefined,
     });
 

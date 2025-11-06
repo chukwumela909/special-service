@@ -4,6 +4,7 @@ export interface IRegistration {
   name: string;
   age: string;
   email: string;
+  countryCode: string;
   phone: string;
   lga: string;
   city: string;
@@ -13,6 +14,7 @@ export interface IRegistration {
   expectations: string;
   inviteSomeone: 'yes' | 'no';
   inviteeName?: string;
+  inviteeCountryCode?: string;
   inviteePhone?: string;
   registrationNumber?: string;
   createdAt?: Date;
@@ -36,6 +38,11 @@ const RegistrationSchema = new Schema<IRegistration>(
       lowercase: true,
       trim: true,
       index: true,
+    },
+    countryCode: {
+      type: String,
+      required: [true, 'Country code is required'],
+      trim: true,
     },
     phone: {
       type: String,
@@ -77,6 +84,10 @@ const RegistrationSchema = new Schema<IRegistration>(
       default: 'no',
     },
     inviteeName: {
+      type: String,
+      trim: true,
+    },
+    inviteeCountryCode: {
       type: String,
       trim: true,
     },

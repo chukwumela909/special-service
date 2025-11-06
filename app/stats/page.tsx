@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
+import Link from "next/link"
 import { 
   Users, 
   UserPlus, 
@@ -16,7 +17,8 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-  Filter
+  Filter,
+  Wrench
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -33,6 +35,7 @@ interface Registration {
   name: string
   age: string
   email: string
+  countryCode: string
   phone: string
   lga: string
   city: string
@@ -42,6 +45,7 @@ interface Registration {
   expectations: string
   inviteSomeone: string
   inviteeName?: string
+  inviteeCountryCode?: string
   inviteePhone?: string
   registrationNumber: string
   createdAt: string
@@ -71,6 +75,45 @@ interface ApiResponse {
   }
 }
 
+// Helper function to format phone numbers (convert +234 to 0 and add spacing)
+const formatPhoneNumber = (countryCode?: string, phone?: string): string => {
+  if (!phone) return "N/A"
+  
+  // Remove any existing spaces or special characters from phone
+  const cleanPhone = phone.replace(/[\s\-()]/g, '')
+  
+  // If no country code provided, assume it's a Nigerian number if it starts with appropriate digits
+  if (!countryCode) {
+    // Check if it already starts with 0 or looks like a Nigerian number
+    if (cleanPhone.startsWith('0') && cleanPhone.length === 11) {
+      return `${cleanPhone.slice(0, 4)} ${cleanPhone.slice(4, 7)} ${cleanPhone.slice(7)}`
+    }
+    // If it starts with 234, convert it
+    if (cleanPhone.startsWith('234') && cleanPhone.length === 13) {
+      const formatted = `0${cleanPhone.slice(3)}`
+      return `${formatted.slice(0, 4)} ${formatted.slice(4, 7)} ${formatted.slice(7)}`
+    }
+    // If it's 10 digits (without leading 0), add 0
+    if (cleanPhone.length === 10 && /^\d+$/.test(cleanPhone)) {
+      const formatted = `0${cleanPhone}`
+      return `${formatted.slice(0, 4)} ${formatted.slice(4, 7)} ${formatted.slice(7)}`
+    }
+    return cleanPhone
+  }
+  
+  if (countryCode === "+234") {
+    // Format as 0XXX XXX XXXX
+    const formatted = `0${cleanPhone}`
+    if (formatted.length === 11) {
+      return `${formatted.slice(0, 4)} ${formatted.slice(4, 7)} ${formatted.slice(7)}`
+    }
+    return formatted
+  }
+  
+  // For other countries, keep country code and format phone
+  return `${countryCode} ${cleanPhone}`
+}
+
 export default function StatsPage() {
   const [data, setData] = useState<ApiResponse["data"] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -78,6 +121,7 @@ export default function StatsPage() {
   const [page, setPage] = useState(1)
   const [sortBy, setSortBy] = useState("createdAt")
   const [sortOrder, setSortOrder] = useState("desc")
+  const [exportingAll, setExportingAll] = useState(false)
 
   useEffect(() => {
     fetchRegistrations()
@@ -136,7 +180,7 @@ export default function StatsPage() {
       reg.registrationNumber,
       reg.name,
       reg.email,
-      reg.phone,
+      formatPhoneNumber(reg.countryCode, reg.phone),
       reg.age,
       reg.lga,
       reg.city,
@@ -145,7 +189,7 @@ export default function StatsPage() {
       reg.cefZone || "",
       reg.inviteSomeone,
       reg.inviteeName || "",
-      reg.inviteePhone || "",
+      reg.inviteeCountryCode && reg.inviteePhone ? formatPhoneNumber(reg.inviteeCountryCode, reg.inviteePhone) : "",
       new Date(reg.createdAt).toLocaleString(),
     ])
 
@@ -160,8 +204,83 @@ export default function StatsPage() {
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `registrations-${new Date().toISOString().split("T")[0]}.csv`
+    a.download = `registrations-page-${page}-${new Date().toISOString().split("T")[0]}.csv`
     a.click()
+  }
+
+  const exportAllToCSV = async () => {
+    setExportingAll(true)
+    try {
+      // Fetch all registrations without pagination
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "10000", // Large limit to get all records
+        search: "",
+        sortBy,
+        sortOrder,
+      })
+
+      const response = await fetch(`/api/registrations?${params}`)
+      const result = await response.json()
+
+      if (result.success && result.data.registrations) {
+        const headers = [
+          "Registration Number",
+          "Name",
+          "Email",
+          "Phone",
+          "Age Range",
+          "LGA",
+          "City",
+          "State",
+          "Country",
+          "CEF Zone",
+          "Expectations",
+          "Inviting Someone",
+          "Invitee Name",
+          "Invitee Phone",
+          "Registered At",
+        ]
+
+        const rows = result.data.registrations.map((reg: Registration) => [
+          reg.registrationNumber,
+          reg.name,
+          reg.email,
+          formatPhoneNumber(reg.countryCode, reg.phone),
+          reg.age,
+          reg.lga,
+          reg.city,
+          reg.state,
+          reg.country,
+          reg.cefZone || "",
+          reg.expectations.replace(/"/g, '""'), // Escape quotes in expectations
+          reg.inviteSomeone,
+          reg.inviteeName || "",
+          reg.inviteeCountryCode && reg.inviteePhone ? formatPhoneNumber(reg.inviteeCountryCode, reg.inviteePhone) : "",
+          new Date(reg.createdAt).toLocaleString(),
+        ])
+
+        const csvContent = [
+          headers.join(","),
+          ...rows.map((row: any[]) =>
+            row.map((cell) => `"${cell}"`).join(",")
+          ),
+        ].join("\n")
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `all-registrations-${new Date().toISOString().split("T")[0]}.csv`
+        a.click()
+        window.URL.revokeObjectURL(url)
+      }
+    } catch (error) {
+      console.error("Error exporting all data:", error)
+      alert("Failed to export all data. Please try again.")
+    } finally {
+      setExportingAll(false)
+    }
   }
 
   if (loading && !data) {
@@ -376,8 +495,33 @@ export default function StatsPage() {
                 className="bg-green-600 hover:bg-green-700"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Export
+                Export Page
               </Button>
+
+              <Button
+                onClick={exportAllToCSV}
+                disabled={exportingAll}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+              >
+                {exportingAll ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Export All
+                  </>
+                )}
+              </Button>
+
+              <Link href="/cleanup">
+                <Button className="bg-purple-600 hover:bg-purple-700">
+                  <Wrench className="w-4 h-4 mr-2" />
+                  Cleanup Data
+                </Button>
+              </Link>
             </div>
           </div>
         </motion.div>
@@ -447,7 +591,7 @@ export default function StatsPage() {
                       </div>
                       <div className="text-sm text-gray-400 flex items-center gap-1">
                         <Phone className="w-3 h-3" />
-                        {reg.phone}
+                        {formatPhoneNumber(reg.countryCode, reg.phone)}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -466,7 +610,7 @@ export default function StatsPage() {
                             ✓ {reg.inviteeName}
                           </div>
                           <div className="text-xs text-gray-400">
-                            {reg.inviteePhone}
+                            {reg.inviteeCountryCode && reg.inviteePhone ? formatPhoneNumber(reg.inviteeCountryCode, reg.inviteePhone) : ""}
                           </div>
                         </div>
                       ) : (

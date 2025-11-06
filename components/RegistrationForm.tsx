@@ -26,7 +26,8 @@ const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   age: z.string().min(1, "Please select an age range"),
   email: z.string().email("Please enter a valid email"),
-  phone: z.string().min(10, "Please enter a valid phone number"),
+  countryCode: z.string().min(1, "Please select a country code"),
+  phone: z.string().min(7, "Please enter a valid phone number").max(15, "Phone number too long"),
   lga: z.string().min(2, "Please enter your LGA"),
   city: z.string().min(2, "Please enter your city"),
   state: z.string().min(2, "Please enter your state"),
@@ -35,16 +36,40 @@ const formSchema = z.object({
   expectations: z.string().min(10, "Please share your expectations (at least 10 characters)"),
   inviteSomeone: z.enum(["yes", "no"]),
   inviteeName: z.string().optional(),
+  inviteeCountryCode: z.string().optional(),
   inviteePhone: z.string().optional(),
 }).refine((data) => {
   if (data.inviteSomeone === "yes") {
-    return data.inviteeName && data.inviteeName.length >= 2 && data.inviteePhone && data.inviteePhone.length >= 10
+    return data.inviteeName && data.inviteeName.length >= 2 && data.inviteeCountryCode && data.inviteePhone && data.inviteePhone.length >= 7
   }
   return true
 }, {
-  message: "Please provide invitee name and phone number",
+  message: "Please provide invitee name, country code and phone number",
   path: ["inviteeName"],
 })
+
+// Common country codes
+const countryCodes = [
+  { code: "+234", country: "Nigeria", flag: "🇳🇬" },
+  { code: "+1", country: "USA/Canada", flag: "🇺🇸" },
+  { code: "+44", country: "UK", flag: "🇬🇧" },
+  { code: "+27", country: "South Africa", flag: "🇿🇦" },
+  { code: "+233", country: "Ghana", flag: "🇬🇭" },
+  { code: "+254", country: "Kenya", flag: "🇰🇪" },
+  { code: "+91", country: "India", flag: "🇮🇳" },
+  { code: "+61", country: "Australia", flag: "🇦🇺" },
+  { code: "+86", country: "China", flag: "🇨🇳" },
+  { code: "+81", country: "Japan", flag: "🇯🇵" },
+  { code: "+49", country: "Germany", flag: "🇩🇪" },
+  { code: "+33", country: "France", flag: "🇫🇷" },
+  { code: "+39", country: "Italy", flag: "🇮🇹" },
+  { code: "+34", country: "Spain", flag: "🇪🇸" },
+  { code: "+971", country: "UAE", flag: "🇦🇪" },
+  { code: "+966", country: "Saudi Arabia", flag: "🇸🇦" },
+  { code: "+55", country: "Brazil", flag: "🇧🇷" },
+  { code: "+52", country: "Mexico", flag: "🇲🇽" },
+  { code: "+7", country: "Russia", flag: "🇷🇺" },
+]
 
 type FormData = z.infer<typeof formSchema>
 
@@ -64,22 +89,51 @@ export default function RegistrationForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       inviteSomeone: "no",
+      countryCode: "+234",
+      inviteeCountryCode: "+234",
     },
   })
 
   const inviteSomeone = watch("inviteSomeone")
+
+  // Helper function to clean phone numbers
+  const cleanPhoneNumber = (phone: string): string => {
+    // Remove all spaces, dashes, parentheses
+    let cleaned = phone.replace(/[\s\-()]/g, '')
+    
+    // Remove +234 or 234 prefix
+    if (cleaned.startsWith('+234')) {
+      cleaned = cleaned.slice(4)
+    } else if (cleaned.startsWith('234')) {
+      cleaned = cleaned.slice(3)
+    }
+    
+    // Remove leading 0
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.slice(1)
+    }
+    
+    return cleaned
+  }
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true)
     setErrorMessage("")
 
     try {
+      // Clean phone numbers before sending
+      const cleanedData = {
+        ...data,
+        phone: cleanPhoneNumber(data.phone),
+        inviteePhone: data.inviteePhone ? cleanPhoneNumber(data.inviteePhone) : undefined,
+      }
+
       const response = await fetch('/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(cleanedData),
       })
 
       const result = await response.json()
@@ -350,20 +404,42 @@ export default function RegistrationForm() {
                 <Label htmlFor="phone" className="text-gray-200 font-semibold">
                   Phone Number <span className="text-red-400">*</span>
                 </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  {...register("phone")}
-                  className="mt-2 bg-slate-800 border-slate-600 text-white placeholder:text-gray-400 focus:border-slate-500 focus:ring-slate-500"
-                  placeholder="+234 800 000 0000"
-                />
-                {errors.phone && (
+                <div className="flex gap-2 mt-2">
+                  <Select onValueChange={(value) => setValue("countryCode", value)} defaultValue="+234">
+                    <SelectTrigger className="w-[140px] bg-slate-800 border-slate-600 text-white focus:border-slate-500 focus:ring-slate-500">
+                      <SelectValue placeholder="Code" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-600 max-h-[300px]">
+                      {countryCodes.map((item) => (
+                        <SelectItem 
+                          key={item.code} 
+                          value={item.code}
+                          className="text-white focus:bg-slate-700 focus:text-white"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>{item.flag}</span>
+                            <span>{item.code}</span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    {...register("phone")}
+                    className="flex-1 bg-slate-800 border-slate-600 text-white placeholder:text-gray-400 focus:border-slate-500 focus:ring-slate-500"
+                    placeholder="8000000000"
+                    maxLength={15}
+                  />
+                </div>
+                {(errors.phone || errors.countryCode) && (
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="text-red-400 text-sm mt-1"
                   >
-                    {errors.phone.message}
+                    {errors.phone?.message || errors.countryCode?.message}
                   </motion.p>
                 )}
               </motion.div>
@@ -579,20 +655,42 @@ export default function RegistrationForm() {
                         <Label htmlFor="inviteePhone" className="text-gray-200 font-semibold">
                           Invitee Phone Number <span className="text-red-400">*</span>
                         </Label>
-                        <Input
-                          id="inviteePhone"
-                          type="tel"
-                          {...register("inviteePhone")}
-                          className="mt-2 bg-slate-800 border-slate-600 text-white placeholder:text-gray-400 focus:border-slate-500 focus:ring-slate-500"
-                          placeholder="+234 800 000 0000"
-                        />
-                        {errors.inviteePhone && (
+                        <div className="flex gap-2 mt-2">
+                          <Select onValueChange={(value) => setValue("inviteeCountryCode", value)} defaultValue="+234">
+                            <SelectTrigger className="w-[140px] bg-slate-800 border-slate-600 text-white focus:border-slate-500 focus:ring-slate-500">
+                              <SelectValue placeholder="Code" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-800 border-slate-600 max-h-[300px]">
+                              {countryCodes.map((item) => (
+                                <SelectItem 
+                                  key={`invitee-${item.code}`} 
+                                  value={item.code}
+                                  className="text-white focus:bg-slate-700 focus:text-white"
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <span>{item.flag}</span>
+                                    <span>{item.code}</span>
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            id="inviteePhone"
+                            type="tel"
+                            {...register("inviteePhone")}
+                            className="flex-1 bg-slate-800 border-slate-600 text-white placeholder:text-gray-400 focus:border-slate-500 focus:ring-slate-500"
+                            placeholder="8000000000"
+                            maxLength={15}
+                          />
+                        </div>
+                        {(errors.inviteePhone || errors.inviteeCountryCode) && (
                           <motion.p
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             className="text-red-400 text-sm mt-1"
                           >
-                            {errors.inviteePhone.message}
+                            {errors.inviteePhone?.message || errors.inviteeCountryCode?.message}
                           </motion.p>
                         )}
                       </div>
